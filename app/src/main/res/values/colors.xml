@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#6200EE</color>
+    <color name="colorPrimaryDark">#3700B3</color>
+    <color name="colorAccent">#03DAC5</color>
+    <color name="canvasBg">#222222</color>
+    <color name="obstacleRed">#F44336</color>
+    <color name="parkingBlue">#03A9F4</color>
+    <color name="coinYellow">#FFC107</color>
+    <color name="coinInnerYellow">#F57C00</color>
+    <color name="coinOuterYellow">#FFEB3B</color>
+</resources>
