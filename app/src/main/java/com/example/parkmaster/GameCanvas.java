@@ -2,6 +2,7 @@ package com.example.parkmaster;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
@@ -27,6 +28,7 @@ public class GameCanvas extends View {
     float carX = -1;
     float carY = -1;
     Drawable carDrawable;
+    boolean gameOver = false;
 
     static ArrayList<Path> carPath = new ArrayList<>();
     static ArrayList<Float> carPathRefX = new ArrayList<>();
@@ -49,31 +51,36 @@ public class GameCanvas extends View {
     Thread thread = new Thread() {
         @Override
         public void run() {
-            try {
-                for (int i = 0; i < carPathRefX.size(); i++) {
-                    sleep(20);
-                    if (carPathRefX.size() == 0) {
-                        return;
+            while (true) {
+                try {
+                    if (gameOver) {
+                        for (int i = 0; i < carPathRefX.size(); i++) {
+                            sleep(20);
+                            if (carPathRefX.size() == 0) {
+                                return;
+                            }
+                            carX = carPathRefX.get(i);
+                            carY = carPathRefY.get(i);
+                        }
+                        switch (coinScored) {
+                            case 0: {
+                                listener.onResult("Car Parked without gaining Coins");
+                                break;
+                            }
+                            case 1: {
+                                listener.onResult("You have scored " + coinScored + " Coin!");
+                                break;
+                            }
+                            default: {
+                                listener.onResult("You have scored " + coinScored + " Coins!");
+                            }
+                        }
+                        restartGame();
                     }
-                    carX = carPathRefX.get(i);
-                    carY = carPathRefY.get(i);
+
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
-                switch (coinScored) {
-                    case 0: {
-                        listener.onResult("Car Parked without gaining Coins");
-                        break;
-                    }
-                    case 1: {
-                        listener.onResult("You have scored " + coinScored + " Coin!");
-                        break;
-                    }
-                    default: {
-                        listener.onResult("You have scored " + coinScored + " Coins!");
-                    }
-                }
-                restartGame();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
             }
         }
     };
@@ -99,8 +106,6 @@ public class GameCanvas extends View {
     }
 
     private void init(@Nullable AttributeSet set) {
-
-        carDrawable = getResources().getDrawable(R.drawable.ic_carsvg, null);
 
         listener = (GameCanvasListener) getContext();
 
@@ -190,6 +195,9 @@ public class GameCanvas extends View {
     }
 
     private void drawCar(Canvas canvas) {
+        Matrix matrix = new Matrix();
+        matrix.postRotate(90);
+        carDrawable = getResources().getDrawable(R.drawable.ic_carsvg, null);
         carDrawable.setBounds((int) carX - 100, (int) carY - 125, (int) carX + 100, (int) carY + 125);
         carDrawable.draw(canvas);
         //canvas.drawCircle(carX, carY, 30, carPaint);
@@ -248,6 +256,7 @@ public class GameCanvas extends View {
         obstacleX.clear();
         obstacleY.clear();
         coinScored = 0;
+        gameOver = false;
     }
 
     @Override
@@ -316,7 +325,10 @@ public class GameCanvas extends View {
     }
 
     private void driveCar() {
-        thread.start();
+        if (!thread.isAlive()) {
+            thread.start();
+        }
+        gameOver = true;
     }
 
 
