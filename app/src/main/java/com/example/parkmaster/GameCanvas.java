@@ -32,6 +32,8 @@ public class GameCanvas extends View {
     static ArrayList<Float> carPathRefY = new ArrayList<>();
     static ArrayList<Float> coinX = new ArrayList<>();
     static ArrayList<Float> coinY = new ArrayList<>();
+    static ArrayList<Float> obstacleX = new ArrayList<>();
+    static ArrayList<Float> obstacleY = new ArrayList<>();
     Path mPath;
     float currentX;
     float currentY;
@@ -43,11 +45,12 @@ public class GameCanvas extends View {
             try {
                 for (int i = 0; i < carPathRefX.size(); i++) {
                     sleep(50);
+                    if(carPathRefX.size()==0){
+                        return;
+                    }
                     carX = carPathRefX.get(i);
                     carY = carPathRefY.get(i);
                 }
-                carPathRefX.clear();
-                carPathRefY.clear();
                 restartGame();
             } catch (InterruptedException e) {
                 e.printStackTrace();
@@ -117,9 +120,10 @@ public class GameCanvas extends View {
             drawParkSlot(canvas);
             drawStartPosition(canvas);
             if (coinX.size() == 0) {
-                generateRandomCoins(canvas);
+                generateRandomCoinsAndObstacles(canvas);
             } else {
                 drawCoins(canvas);
+                drawObstacles(canvas);
             }
             drawCar(canvas);
             if (carPath.size() != 0) {
@@ -129,17 +133,34 @@ public class GameCanvas extends View {
         postInvalidate();
     }
 
-    private void generateRandomCoins(Canvas canvas) {
+    private void generateRandomCoinsAndObstacles(Canvas canvas) {
         Random random = new Random();
         int coinsCount = random.nextInt(3) + 2;
         float coordinate;
         for (int i = 0; i < coinsCount; i++) {
+            //adding coin coords
             coordinate = 50 + (random.nextFloat() * (canvasWidth - 100));
             coinX.add(coordinate);
             coordinate = 500 + (random.nextFloat() * (canvasHeight - 1000));
             coinY.add(coordinate);
+            //adding obstacle coords
+            coordinate = 50 + (random.nextFloat() * (canvasWidth - 100));
+            obstacleX.add(coordinate);
+            coordinate = 500 + (random.nextFloat() * (canvasHeight - 1000));
+            obstacleY.add(coordinate);
+            coordinate = obstacleX.get(obstacleX.size() - 1) - 100 + (random.nextFloat() * (obstacleX.get(obstacleX.size() - 1) - 200));
+            obstacleX.add(coordinate);
+            coordinate = obstacleY.get(obstacleY.size() - 1) - 100 + (random.nextFloat() * (obstacleY.get(obstacleY.size() - 1) - 200));
+            obstacleY.add(coordinate);
         }
         drawCoins(canvas);
+        drawObstacles(canvas);
+    }
+
+    private void drawObstacles(Canvas canvas) {
+        for (int i = 0; i < coinX.size(); i += 2) {
+            canvas.drawLine(obstacleX.get(i), obstacleY.get(i), obstacleX.get(i + 1), obstacleY.get(i + 1), obstacleRed);
+        }
     }
 
     private void drawCoins(Canvas canvas) {
@@ -151,7 +172,33 @@ public class GameCanvas extends View {
 
     private void drawCar(Canvas canvas) {
         canvas.drawCircle(carX, carY, 30, carPaint);
+        checkCoinCollision(carX, carY);
+        checkObstacleCollision(carX, carY);
         postInvalidate();
+    }
+
+    private void checkCoinCollision(float x, float y) {
+        for (int i = 0; i < coinX.size(); i++) {
+            int sensitivity = 80;
+            if ((Math.abs(x - coinX.get(i)) < sensitivity) && (Math.abs(y - coinY.get(i)) < sensitivity)) {
+                coinX.remove(i);
+                coinY.remove(i);
+            }
+        }
+    }
+
+    private void checkObstacleCollision(float x, float y) {
+        for (int i = 0; i < obstacleX.size(); i += 2) {
+            float length1x = Math.abs(x - obstacleX.get(i));
+            float length2x = Math.abs(x - obstacleX.get(i + 1));
+            float length1y = Math.abs(y - obstacleY.get(i));
+            float length2y = Math.abs(y - obstacleY.get(i + 1));
+            boolean a = (length1x + length2x) == Math.abs(obstacleX.get(i) - obstacleX.get(i + 1));
+            boolean b = (length1y + length2y) == Math.abs(obstacleY.get(i) - obstacleY.get(i + 1));
+            if (a && b) {
+                restartGame();
+            }
+        }
     }
 
     private void drawParkSlot(Canvas canvas) {
@@ -166,10 +213,14 @@ public class GameCanvas extends View {
     }
 
     private void restartGame() {
+        carPathRefX.clear();
+        carPathRefY.clear();
         carX = -1;
         carPath.clear();
         coinX.clear();
         coinY.clear();
+        obstacleX.clear();
+        obstacleY.clear();
     }
 
     @Override
