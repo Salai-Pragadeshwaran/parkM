@@ -9,4 +9,5 @@
     <color name="coinYellow">#FFC107</color>
     <color name="coinInnerYellow">#F57C00</color>
     <color name="coinOuterYellow">#FFEB3B</color>
+    <color name="carColor">#FFFFFF</color>
 </resources>

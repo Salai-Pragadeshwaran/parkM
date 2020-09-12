@@ -5,6 +5,7 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
+import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -21,11 +22,11 @@ public class GameCanvas extends View {
     Paint parkingBlue = new Paint();
     Paint coinPaint1 = new Paint();
     Paint coinPaint2 = new Paint();
-    Paint carPaint = new Paint();
+    int coinScored = 0;
+    Paint startPositionPaint = new Paint();
     float carX = -1;
     float carY = -1;
-    Paint whitePaint1 = new Paint();
-    Boolean gameFinished = false;
+    Drawable carDrawable;
 
     static ArrayList<Path> carPath = new ArrayList<>();
     static ArrayList<Float> carPathRefX = new ArrayList<>();
@@ -37,19 +38,38 @@ public class GameCanvas extends View {
     Path mPath;
     float currentX;
     float currentY;
-    float TOUCH_TOLERANCE = 4;
+    float touchTolerance = 4;
+
+    private GameCanvasListener listener;
+
+    public interface GameCanvasListener {
+        int onResult(String msg);
+    }
 
     Thread thread = new Thread() {
         @Override
         public void run() {
             try {
                 for (int i = 0; i < carPathRefX.size(); i++) {
-                    sleep(50);
-                    if(carPathRefX.size()==0){
+                    sleep(20);
+                    if (carPathRefX.size() == 0) {
                         return;
                     }
                     carX = carPathRefX.get(i);
                     carY = carPathRefY.get(i);
+                }
+                switch (coinScored) {
+                    case 0: {
+                        listener.onResult("Car Parked without gaining Coins");
+                        break;
+                    }
+                    case 1: {
+                        listener.onResult("You have scored " + coinScored + " Coin!");
+                        break;
+                    }
+                    default: {
+                        listener.onResult("You have scored " + coinScored + " Coins!");
+                    }
                 }
                 restartGame();
             } catch (InterruptedException e) {
@@ -80,6 +100,10 @@ public class GameCanvas extends View {
 
     private void init(@Nullable AttributeSet set) {
 
+        carDrawable = getResources().getDrawable(R.drawable.ic_carsvg, null);
+
+        listener = (GameCanvasListener) getContext();
+
         obstacleRed.setColor(getResources().getColor(R.color.obstacleRed));
         obstacleRed.setStyle(Paint.Style.STROKE);
         obstacleRed.setStrokeWidth(20);
@@ -98,10 +122,9 @@ public class GameCanvas extends View {
         coinPaint2.setStyle(Paint.Style.FILL);
         coinPaint2.isAntiAlias();
 
-        carPaint.setColor(getResources().getColor(R.color.coinYellow));
-        carPaint.setStyle(Paint.Style.FILL);
-        carPaint.setStrokeWidth(20);
-        carPaint.isAntiAlias();
+        startPositionPaint.setColor(getResources().getColor(R.color.parkingBlue));
+        startPositionPaint.setStyle(Paint.Style.FILL);
+        startPositionPaint.isAntiAlias();
 
     }
 
@@ -111,24 +134,20 @@ public class GameCanvas extends View {
         canvasWidth = canvas.getWidth();
         if (carX == -1) {
             carX = canvasWidth / 2;
-            carY = canvasHeight - 125;
+            carY = canvasHeight - 150;
         }
         canvas.drawColor(getResources().getColor(R.color.canvasBg));
-        if (gameFinished) {
-            restartGame();
+        drawParkSlot(canvas);
+        drawStartPosition(canvas);
+        if (obstacleX.size() == 0) {
+            generateRandomCoinsAndObstacles(canvas);
         } else {
-            drawParkSlot(canvas);
-            drawStartPosition(canvas);
-            if (coinX.size() == 0) {
-                generateRandomCoinsAndObstacles(canvas);
-            } else {
-                drawCoins(canvas);
-                drawObstacles(canvas);
-            }
-            drawCar(canvas);
-            if (carPath.size() != 0) {
-                canvas.drawPath(carPath.get(0), parkingBlue);
-            }
+            drawCoins(canvas);
+            drawObstacles(canvas);
+        }
+        drawCar(canvas);
+        if (carPath.size() != 0) {
+            canvas.drawPath(carPath.get(0), parkingBlue);
         }
         postInvalidate();
     }
@@ -158,7 +177,7 @@ public class GameCanvas extends View {
     }
 
     private void drawObstacles(Canvas canvas) {
-        for (int i = 0; i < coinX.size(); i += 2) {
+        for (int i = 0; i < obstacleX.size(); i += 2) {
             canvas.drawLine(obstacleX.get(i), obstacleY.get(i), obstacleX.get(i + 1), obstacleY.get(i + 1), obstacleRed);
         }
     }
@@ -171,7 +190,9 @@ public class GameCanvas extends View {
     }
 
     private void drawCar(Canvas canvas) {
-        canvas.drawCircle(carX, carY, 30, carPaint);
+        carDrawable.setBounds((int) carX - 100, (int) carY - 125, (int) carX + 100, (int) carY + 125);
+        carDrawable.draw(canvas);
+        //canvas.drawCircle(carX, carY, 30, carPaint);
         checkCoinCollision(carX, carY);
         checkObstacleCollision(carX, carY);
         postInvalidate();
@@ -179,10 +200,11 @@ public class GameCanvas extends View {
 
     private void checkCoinCollision(float x, float y) {
         for (int i = 0; i < coinX.size(); i++) {
-            int sensitivity = 80;
+            int sensitivity = 100;
             if ((Math.abs(x - coinX.get(i)) < sensitivity) && (Math.abs(y - coinY.get(i)) < sensitivity)) {
                 coinX.remove(i);
                 coinY.remove(i);
+                coinScored++;
             }
         }
     }
@@ -193,9 +215,13 @@ public class GameCanvas extends View {
             float length2x = Math.abs(x - obstacleX.get(i + 1));
             float length1y = Math.abs(y - obstacleY.get(i));
             float length2y = Math.abs(y - obstacleY.get(i + 1));
-            boolean a = (length1x + length2x) == Math.abs(obstacleX.get(i) - obstacleX.get(i + 1));
-            boolean b = (length1y + length2y) == Math.abs(obstacleY.get(i) - obstacleY.get(i + 1));
+            float collisionTolerance = 20;
+            float lengthA = (length1x + length2x) - Math.abs(obstacleX.get(i) - obstacleX.get(i + 1));
+            float lengthB = (length1y + length2y) - Math.abs(obstacleY.get(i) - obstacleY.get(i + 1));
+            boolean a = (Math.abs(lengthA) < collisionTolerance);
+            boolean b = (Math.abs(lengthB) < collisionTolerance);
             if (a && b) {
+                listener.onResult("Oops! You hit an obstacle !");
                 restartGame();
             }
         }
@@ -209,7 +235,7 @@ public class GameCanvas extends View {
     private void drawStartPosition(Canvas canvas) {
         RectF startPosition = new RectF((canvasWidth / 2) - 125, canvasHeight - 50,
                 (canvasWidth / 2) + 125, canvasHeight - 200);
-        canvas.drawRect(startPosition, parkingBlue);
+        canvas.drawRect(startPosition, startPositionPaint);
     }
 
     private void restartGame() {
@@ -221,6 +247,7 @@ public class GameCanvas extends View {
         coinY.clear();
         obstacleX.clear();
         obstacleY.clear();
+        coinScored = 0;
     }
 
     @Override
@@ -279,8 +306,8 @@ public class GameCanvas extends View {
         float dx = Math.abs(x - currentX);
         float dy = Math.abs(y - currentY);
 
-        if (dx >= TOUCH_TOLERANCE || dy >= TOUCH_TOLERANCE) {
-            mPath.quadTo(currentX, currentY, x, y);
+        if (dx >= touchTolerance || dy >= touchTolerance) {
+            mPath.lineTo(x, y);
             currentX = x;
             currentY = y;
             carPathRefX.add(x);
