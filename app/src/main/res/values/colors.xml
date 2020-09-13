@@ -10,4 +10,7 @@
     <color name="coinInnerYellow">#F57C00</color>
     <color name="coinOuterYellow">#FFEB3B</color>
     <color name="carColor">#FFFFFF</color>
+    <color name="parkingGreen">#4CAF50</color>
+    <color name="parkingOrange">#FF5722</color>
+    <color name="startPosition">#FF9800</color>
 </resources>
